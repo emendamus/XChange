@@ -23,7 +23,8 @@ import si.mazi.rescu.RestProxyFactory;
 public class BinanceStreamingExchange extends BinanceExchange implements StreamingExchange {
 
   private static final Logger LOG = LoggerFactory.getLogger(BinanceStreamingExchange.class);
-  private static final String API_BASE_URI = "wss://stream.binance.com:9443/";
+  private static String API_BASE_URI = "wss://stream.binance.com:9443/";
+  private static String USER_API_BASE_URI = "wss://testnet.binance.vision/ws";
   protected static final String USE_HIGHER_UPDATE_FREQUENCY =
       "Binance_Orderbook_Use_Higher_Frequency";
 
@@ -52,6 +53,14 @@ public class BinanceStreamingExchange extends BinanceExchange implements Streami
     if (userHigherFrequency) {
       orderBookUpdateFrequencyParameter = "@100ms";
     }
+    API_BASE_URI =
+        MoreObjects.firstNonNull(
+            (String) exchangeSpecification.getExchangeSpecificParametersItem("wssUri"),
+            "wss://stream.binance.com:9443/");
+    USER_API_BASE_URI =
+        MoreObjects.firstNonNull(
+            (String) exchangeSpecification.getExchangeSpecificParametersItem("wssUserUri"),
+            "wss://stream.binance.com:9443/ws/");
   }
 
   /**
@@ -118,7 +127,7 @@ public class BinanceStreamingExchange extends BinanceExchange implements Streami
   }
 
   private Completable createAndConnectUserDataService(String listenKey) {
-    userDataStreamingService = BinanceUserDataStreamingService.create(listenKey);
+    userDataStreamingService = BinanceUserDataStreamingService.create(listenKey, USER_API_BASE_URI);
     return userDataStreamingService
         .connect()
         .doOnComplete(

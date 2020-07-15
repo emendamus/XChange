@@ -12,9 +12,10 @@ public class BinanceUserDataStreamingService extends JsonNettyStreamingService {
 
   private static final Logger LOG = LoggerFactory.getLogger(BinanceUserDataStreamingService.class);
 
-  private static final String USER_API_BASE_URI = "wss://stream.binance.com:9443/ws/";
+  private static String USER_API_BASE_URI = "wss://stream.binance.com:9443/ws/";
 
-  public static BinanceUserDataStreamingService create(String listenKey) {
+  public static BinanceUserDataStreamingService create(String listenKey, String userBaseApi) {
+    USER_API_BASE_URI = userBaseApi;
     return new BinanceUserDataStreamingService(USER_API_BASE_URI + listenKey);
   }
 
