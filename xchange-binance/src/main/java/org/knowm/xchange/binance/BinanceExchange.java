@@ -75,6 +75,7 @@ public class BinanceExchange extends BaseExchange {
     spec.setPort(80);
     spec.setExchangeName("Binance");
     spec.setExchangeDescription("Binance Exchange.");
+    spec.setExchangeSpecificParametersItem("assetDetailsExist", true);
     AuthUtils.setApiAndSecretKey(spec, "binance");
     return spec;
   }
@@ -98,7 +99,11 @@ public class BinanceExchange extends BaseExchange {
       Symbol[] symbols = exchangeInfo.getSymbols();
 
       BinanceAccountService accountService = (BinanceAccountService) getAccountService();
-      Map<String, AssetDetail> assetDetailMap = accountService.getAssetDetails();
+      Map<String, AssetDetail> assetDetailMap = null;
+      if ((boolean)
+          this.getExchangeSpecification().getExchangeSpecificParametersItem("assetDetailsExist")) {
+        accountService.getAssetDetails();
+      }
       // Clear all hardcoded currencies when loading dynamically from exchange.
       if (assetDetailMap != null) {
         currencies.clear();
