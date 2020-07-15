@@ -1,5 +1,7 @@
 package org.knowm.xchange.binance.service;
 
+import static org.knowm.xchange.binance.dto.trade.BinanceOrderFlags.QUOTE_QUANTITY;
+
 import java.io.IOException;
 import java.math.BigDecimal;
 import java.util.ArrayList;
@@ -148,7 +150,8 @@ public class BinanceTradeService extends BinanceTradeServiceRaw implements Trade
               BinanceAdapters.convert(order.getType()),
               type,
               tif,
-              order.getOriginalAmount(),
+              order.hasFlag(QUOTE_QUANTITY) ? null : order.getOriginalAmount(),
+              order.hasFlag(QUOTE_QUANTITY) ? order.getOriginalAmount() : null,
               limitPrice,
               getClientOrderId(order),
               stopPrice,

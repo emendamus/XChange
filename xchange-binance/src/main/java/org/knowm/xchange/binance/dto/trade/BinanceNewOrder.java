@@ -23,6 +23,7 @@ public final class BinanceNewOrder {
       @JsonProperty("clientOrderId") String clientOrderId,
       @JsonProperty("transactTime") long transactTime,
       @JsonProperty("price") BigDecimal price,
+      @JsonProperty("quoteOrderQty") BigDecimal quoteOrderQty,
       @JsonProperty("origQty") BigDecimal origQty,
       @JsonProperty("executedQty") BigDecimal executedQty,
       @JsonProperty("status") OrderStatus status,

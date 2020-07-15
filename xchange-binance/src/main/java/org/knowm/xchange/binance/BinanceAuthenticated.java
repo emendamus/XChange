@@ -64,6 +64,7 @@ public interface BinanceAuthenticated extends Binance {
       @FormParam("type") OrderType type,
       @FormParam("timeInForce") TimeInForce timeInForce,
       @FormParam("quantity") BigDecimal quantity,
+      @FormParam("quoteOrderQty") BigDecimal quoteOrderQty,
       @FormParam("price") BigDecimal price,
       @FormParam("newClientOrderId") String newClientOrderId,
       @FormParam("stopPrice") BigDecimal stopPrice,
