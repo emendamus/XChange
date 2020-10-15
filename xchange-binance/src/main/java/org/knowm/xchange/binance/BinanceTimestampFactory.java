@@ -6,6 +6,7 @@ import java.io.IOException;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Supplier;
 import org.knowm.xchange.ExchangeSpecification;
 import org.knowm.xchange.binance.dto.meta.BinanceTime;
 import org.knowm.xchange.client.ResilienceRegistries;
@@ -18,7 +19,7 @@ public class BinanceTimestampFactory implements SynchronizedValueFactory<Long> {
 
   private static final Logger LOG = LoggerFactory.getLogger(BinanceTimestampFactory.class);
 
-  private final Binance binance;
+  private final Supplier<BinanceTime> binanceTime;
   private final ExchangeSpecification.ResilienceSpecification resilienceSpecification;
   private final ResilienceRegistries resilienceRegistries;
 
@@ -26,10 +27,10 @@ public class BinanceTimestampFactory implements SynchronizedValueFactory<Long> {
   private Long deltaServerTime;
 
   public BinanceTimestampFactory(
-      Binance binance,
+      Supplier<BinanceTime> binanceTime,
       ExchangeSpecification.ResilienceSpecification resilienceSpecification,
       ResilienceRegistries resilienceRegistries) {
-    this.binance = binance;
+    this.binanceTime = binanceTime;
     this.resilienceSpecification = resilienceSpecification;
     this.resilienceRegistries = resilienceRegistries;
   }
@@ -70,7 +71,7 @@ public class BinanceTimestampFactory implements SynchronizedValueFactory<Long> {
   }
 
   private BinanceTime binanceTime() throws IOException {
-    return ResilienceUtils.decorateApiCall(resilienceSpecification, () -> binance.time())
+    return ResilienceUtils.decorateApiCall(resilienceSpecification, binanceTime::get)
         .withRetry(resilienceRegistries.retries().retry("time"))
         .withRateLimiter(
             resilienceRegistries.rateLimiters().rateLimiter(REQUEST_WEIGHT_RATE_LIMITER))
