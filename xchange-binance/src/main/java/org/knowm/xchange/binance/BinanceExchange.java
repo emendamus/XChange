@@ -1,5 +1,6 @@
 package org.knowm.xchange.binance;
 
+import java.io.IOException;
 import java.math.BigDecimal;
 import java.util.Arrays;
 import java.util.Map;
@@ -39,7 +40,13 @@ public class BinanceExchange extends BaseExchange {
             .build();
     this.timestampFactory =
         new BinanceTimestampFactory(
-            binance, getExchangeSpecification().getResilience(), getResilienceRegistries());
+            () -> {
+              try {
+                return binance.time();
+              } catch (IOException e) {
+                throw new RuntimeException(e);
+              }
+            }, getExchangeSpecification().getResilience(), getResilienceRegistries());
     this.marketDataService = new BinanceMarketDataService(this, binance, getResilienceRegistries());
     this.tradeService = new BinanceTradeService(this, binance, getResilienceRegistries());
     this.accountService = new BinanceAccountService(this, binance, getResilienceRegistries());
