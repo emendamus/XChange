@@ -4,6 +4,7 @@ import com.google.common.base.MoreObjects;
 import info.bitrich.xchangestream.binance.BinanceUserDataChannel.NoActiveChannelException;
 import info.bitrich.xchangestream.core.ProductSubscription;
 import info.bitrich.xchangestream.core.StreamingExchange;
+import info.bitrich.xchangestream.service.netty.ConnectionStateModel.State;
 import info.bitrich.xchangestream.util.Events;
 import io.reactivex.Completable;
 import io.reactivex.Observable;
@@ -14,11 +15,10 @@ import java.util.stream.Stream;
 import org.knowm.xchange.binance.BinanceAuthenticated;
 import org.knowm.xchange.binance.BinanceExchange;
 import org.knowm.xchange.binance.service.BinanceMarketDataService;
+import org.knowm.xchange.client.ExchangeRestProxyBuilder;
 import org.knowm.xchange.currency.CurrencyPair;
-import org.knowm.xchange.service.BaseExchangeService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import si.mazi.rescu.RestProxyFactory;
 
 public class BinanceStreamingExchange extends BinanceExchange implements StreamingExchange {
 
@@ -98,10 +98,9 @@ public class BinanceStreamingExchange extends BinanceExchange implements Streami
 
       LOG.info("Connecting to authenticated web socket");
       BinanceAuthenticated binance =
-          RestProxyFactory.createProxy(
-              BinanceAuthenticated.class,
-              getExchangeSpecification().getSslUri(),
-              new BaseExchangeService<BinanceExchange>(this) {}.getClientConfig());
+          ExchangeRestProxyBuilder.forInterface(
+                  BinanceAuthenticated.class, getExchangeSpecification())
+              .build();
       userDataChannel =
           new BinanceUserDataChannel(binance, exchangeSpecification.getApiKey(), onApiCall);
       try {
@@ -185,6 +184,11 @@ public class BinanceStreamingExchange extends BinanceExchange implements Streami
   }
 
   @Override
+  public Observable<State> connectionStateObservable() {
+    return streamingService.subscribeConnectionState();
+  }
+
+  @Override
   public BinanceStreamingMarketDataService getStreamingMarketDataService() {
     return streamingMarketDataService;
   }
@@ -206,16 +210,19 @@ public class BinanceStreamingExchange extends BinanceExchange implements Streami
 
   public String buildSubscriptionStreams(ProductSubscription subscription) {
     return Stream.of(
-            buildSubscriptionStrings(subscription.getTicker(), "ticker"),
-            buildSubscriptionStrings(subscription.getOrderBook(), "depth"),
-            buildSubscriptionStrings(subscription.getTrades(), "trade"))
+            buildSubscriptionStrings(
+                subscription.getTicker(), BinanceSubscriptionType.TICKER.getType()),
+            buildSubscriptionStrings(
+                subscription.getOrderBook(), BinanceSubscriptionType.DEPTH.getType()),
+            buildSubscriptionStrings(
+                subscription.getTrades(), BinanceSubscriptionType.TRADE.getType()))
         .filter(s -> !s.isEmpty())
         .collect(Collectors.joining("/"));
   }
 
   private String buildSubscriptionStrings(
       List<CurrencyPair> currencyPairs, String subscriptionType) {
-    if ("depth".equals(subscriptionType)) {
+    if (BinanceSubscriptionType.DEPTH.getType().equals(subscriptionType)) {
       return subscriptionStrings(currencyPairs)
           .map(s -> s + "@" + subscriptionType + orderBookUpdateFrequencyParameter)
           .collect(Collectors.joining("/"));
@@ -234,5 +241,17 @@ public class BinanceStreamingExchange extends BinanceExchange implements Streami
   @Override
   public void useCompressedMessages(boolean compressedMessages) {
     streamingService.useCompressedMessages(compressedMessages);
+  }
+
+  public void enableLiveSubscription() {
+    if (this.streamingService == null) {
+      throw new UnsupportedOperationException(
+          "You must connect to streams before enabling live subscription.");
+    }
+    this.streamingService.enableLiveSubscription();
+  }
+
+  public void disableLiveSubscription() {
+    if (this.streamingService != null) this.streamingService.disableLiveSubscription();
   }
 }

@@ -76,7 +76,7 @@ public class BinanceExchange extends BaseExchange {
   @Override
   public ExchangeSpecification getDefaultExchangeSpecification() {
 
-    ExchangeSpecification spec = new ExchangeSpecification(this.getClass().getCanonicalName());
+    ExchangeSpecification spec = new ExchangeSpecification(this.getClass());
     spec.setSslUri("https://api.binance.com");
     spec.setHost("www.binance.com");
     spec.setPort(80);
@@ -159,6 +159,7 @@ public class BinanceExchange extends BaseExchange {
                   counterMaxQty,
                   amountPrecision, // base precision
                   pairPrecision, // counter precision
+                  null,
                   null, /* TODO get fee tiers, although this is not necessary now
                         because their API returns current fee directly */
                   stepSize,

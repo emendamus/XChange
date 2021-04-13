@@ -8,10 +8,11 @@ import org.knowm.xchange.bitstamp.BitstampAuthenticatedV2;
 import org.knowm.xchange.bitstamp.BitstampV2;
 import org.knowm.xchange.bitstamp.dto.BitstampException;
 import org.knowm.xchange.bitstamp.dto.trade.BitstampOrder;
+import org.knowm.xchange.bitstamp.dto.trade.BitstampOrderCancelResponse;
 import org.knowm.xchange.bitstamp.dto.trade.BitstampOrderStatusResponse;
 import org.knowm.xchange.bitstamp.dto.trade.BitstampUserTransaction;
+import org.knowm.xchange.client.ExchangeRestProxyBuilder;
 import org.knowm.xchange.currency.CurrencyPair;
-import si.mazi.rescu.RestProxyFactory;
 import si.mazi.rescu.SynchronizedValueFactory;
 
 /** @author gnandiga */
@@ -20,22 +21,20 @@ public class BitstampTradeServiceRaw extends BitstampBaseService {
   private final BitstampAuthenticated bitstampAuthenticated;
   private final BitstampAuthenticatedV2 bitstampAuthenticatedV2;
   private final BitstampDigest signatureCreator;
-  private String apiKey;
-  private SynchronizedValueFactory<Long> nonceFactory;
+  private final String apiKey;
+  private final SynchronizedValueFactory<Long> nonceFactory;
 
   public BitstampTradeServiceRaw(Exchange exchange) {
 
     super(exchange);
     this.bitstampAuthenticated =
-        RestProxyFactory.createProxy(
-            BitstampAuthenticated.class,
-            exchange.getExchangeSpecification().getSslUri(),
-            getClientConfig());
+        ExchangeRestProxyBuilder.forInterface(
+                BitstampAuthenticated.class, exchange.getExchangeSpecification())
+            .build();
     this.bitstampAuthenticatedV2 =
-        RestProxyFactory.createProxy(
-            BitstampAuthenticatedV2.class,
-            exchange.getExchangeSpecification().getSslUri(),
-            getClientConfig());
+        ExchangeRestProxyBuilder.forInterface(
+                BitstampAuthenticatedV2.class, exchange.getExchangeSpecification())
+            .build();
     this.apiKey = exchange.getExchangeSpecification().getApiKey();
     this.nonceFactory = exchange.getNonceFactory();
     this.signatureCreator =
@@ -43,6 +42,14 @@ public class BitstampTradeServiceRaw extends BitstampBaseService {
             exchange.getExchangeSpecification().getSecretKey(),
             exchange.getExchangeSpecification().getUserName(),
             apiKey);
+  }
+
+  public BitstampOrder[] getBitstampOpenOrders() throws IOException {
+    try {
+      return bitstampAuthenticatedV2.getOpenOrders(apiKey, signatureCreator, nonceFactory);
+    } catch (BitstampException e) {
+      throw handleError(e);
+    }
   }
 
   public BitstampOrder[] getBitstampOpenOrders(CurrencyPair pair) throws IOException {
@@ -90,7 +97,9 @@ public class BitstampTradeServiceRaw extends BitstampBaseService {
   public boolean cancelBitstampOrder(long orderId) throws IOException {
 
     try {
-      return bitstampAuthenticated.cancelOrder(apiKey, signatureCreator, nonceFactory, orderId);
+      BitstampOrderCancelResponse cancelResponse =
+          bitstampAuthenticatedV2.cancelOrder(apiKey, signatureCreator, nonceFactory, orderId);
+      return cancelResponse.getError() == null;
     } catch (BitstampException e) {
       throw handleError(e);
     }
@@ -135,7 +144,7 @@ public class BitstampTradeServiceRaw extends BitstampBaseService {
       Long offset,
       String sort,
       Long sinceTimestamp,
-      Long sinceId)
+      String sinceId)
       throws IOException {
     try {
       return bitstampAuthenticatedV2.getUserTransactions(
@@ -154,7 +163,7 @@ public class BitstampTradeServiceRaw extends BitstampBaseService {
   }
 
   public BitstampUserTransaction[] getBitstampUserTransactions(
-      Long numberOfTransactions, Long offset, String sort, Long sinceTimestamp, Long sinceId)
+      Long numberOfTransactions, Long offset, String sort, Long sinceTimestamp, String sinceId)
       throws IOException {
     try {
       return bitstampAuthenticatedV2.getUserTransactions(
@@ -173,7 +182,7 @@ public class BitstampTradeServiceRaw extends BitstampBaseService {
 
   public BitstampOrderStatusResponse getBitstampOrder(Long orderId) throws IOException {
     try {
-      return bitstampAuthenticated.getOrderStatus(
+      return bitstampAuthenticatedV2.getOrderStatus(
           exchange.getExchangeSpecification().getApiKey(),
           signatureCreator,
           exchange.getNonceFactory(),

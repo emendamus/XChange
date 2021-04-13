@@ -34,7 +34,6 @@ import org.knowm.xchange.coinbasepro.dto.trade.CoinbaseProSendMoneyResponse;
 import org.knowm.xchange.utils.DateUtils;
 import si.mazi.rescu.HttpStatusIOException;
 import si.mazi.rescu.ParamsDigest;
-import si.mazi.rescu.SynchronizedValueFactory;
 
 @Path("/")
 @Produces(MediaType.APPLICATION_JSON)
@@ -61,6 +60,10 @@ public interface CoinbasePro {
       @PathParam("baseCurrency") String baseCurrency,
       @PathParam("targetCurrency") String targetCurrency)
       throws CoinbaseProException, IOException;
+
+  @GET
+  @Path("products/stats")
+  Map<String, CoinbaseProStats> getStats() throws CoinbaseProException, IOException;
 
   @GET
   @Path("products/{baseCurrency}-{targetCurrency}/book?level={level}")
@@ -102,7 +105,7 @@ public interface CoinbasePro {
   org.knowm.xchange.coinbasepro.dto.account.CoinbaseProAccount[] getAccounts(
       @HeaderParam("CB-ACCESS-KEY") String apiKey,
       @HeaderParam("CB-ACCESS-SIGN") ParamsDigest signer,
-      @HeaderParam("CB-ACCESS-TIMESTAMP") SynchronizedValueFactory<Long> nonce,
+      @HeaderParam("CB-ACCESS-TIMESTAMP") long timestamp,
       @HeaderParam("CB-ACCESS-PASSPHRASE") String passphrase)
       throws CoinbaseProException, IOException;
 
@@ -111,7 +114,7 @@ public interface CoinbasePro {
   CoinbaseProFee getFees(
       @HeaderParam("CB-ACCESS-KEY") String apiKey,
       @HeaderParam("CB-ACCESS-SIGN") ParamsDigest signer,
-      @HeaderParam("CB-ACCESS-TIMESTAMP") SynchronizedValueFactory<Long> nonce,
+      @HeaderParam("CB-ACCESS-TIMESTAMP") long timestamp,
       @HeaderParam("CB-ACCESS-PASSPHRASE") String passphrase)
       throws CoinbaseProException, IOException;
 
@@ -120,7 +123,7 @@ public interface CoinbasePro {
   CoinbaseProOrder[] getListOrders(
       @HeaderParam("CB-ACCESS-KEY") String apiKey,
       @HeaderParam("CB-ACCESS-SIGN") ParamsDigest signer,
-      @HeaderParam("CB-ACCESS-TIMESTAMP") SynchronizedValueFactory<Long> nonce,
+      @HeaderParam("CB-ACCESS-TIMESTAMP") long timestamp,
       @HeaderParam("CB-ACCESS-PASSPHRASE") String passphrase)
       throws CoinbaseProException, IOException;
 
@@ -129,7 +132,7 @@ public interface CoinbasePro {
   CoinbaseProOrder[] getListOrders(
       @HeaderParam("CB-ACCESS-KEY") String apiKey,
       @HeaderParam("CB-ACCESS-SIGN") ParamsDigest signer,
-      @HeaderParam("CB-ACCESS-TIMESTAMP") SynchronizedValueFactory<Long> nonce,
+      @HeaderParam("CB-ACCESS-TIMESTAMP") long timestamp,
       @HeaderParam("CB-ACCESS-PASSPHRASE") String passphrase,
       @PathParam("status") String status)
       throws CoinbaseProException, IOException;
@@ -141,7 +144,7 @@ public interface CoinbasePro {
       CoinbaseProPlaceOrder placeOrder,
       @HeaderParam("CB-ACCESS-KEY") String apiKey,
       @HeaderParam("CB-ACCESS-SIGN") ParamsDigest signer,
-      @HeaderParam("CB-ACCESS-TIMESTAMP") SynchronizedValueFactory<Long> nonce,
+      @HeaderParam("CB-ACCESS-TIMESTAMP") long timestamp,
       @HeaderParam("CB-ACCESS-PASSPHRASE") String passphrase)
       throws CoinbaseProException, IOException;
 
@@ -152,7 +155,7 @@ public interface CoinbasePro {
       @PathParam("id") String id,
       @HeaderParam("CB-ACCESS-KEY") String apiKey,
       @HeaderParam("CB-ACCESS-SIGN") ParamsDigest signer,
-      @HeaderParam("CB-ACCESS-TIMESTAMP") SynchronizedValueFactory<Long> nonce,
+      @HeaderParam("CB-ACCESS-TIMESTAMP") long timestamp,
       @HeaderParam("CB-ACCESS-PASSPHRASE") String passphrase)
       throws CoinbaseProException, IOException;
 
@@ -163,29 +166,29 @@ public interface CoinbasePro {
       @PathParam("id") String id,
       @HeaderParam("CB-ACCESS-KEY") String apiKey,
       @HeaderParam("CB-ACCESS-SIGN") ParamsDigest signer,
-      @HeaderParam("CB-ACCESS-TIMESTAMP") SynchronizedValueFactory<Long> nonce,
+      @HeaderParam("CB-ACCESS-TIMESTAMP") long timestamp,
       @HeaderParam("CB-ACCESS-PASSPHRASE") String passphrase)
       throws CoinbaseProException, IOException;
 
   /**
-   * @param apiKey
-   * @param signer
-   * @param nonce
-   * @param passphrase
+   * @param apiKey for account
+   * @param signer for account
+   * @param timestamp of message
+   * @param passphrase for account
    * @param tradeIdAfter Return trades before this tradeId.
    * @param tradeIdBefore Return trades after this tradeId.
-   * @param orderId
-   * @param productId
-   * @return
-   * @throws CoinbaseProException
-   * @throws IOException
+   * @param orderId to get fills for
+   * @param productId to get fills for
+   * @return fill array
+   * @throws CoinbaseProException when exchange throws exception
+   * @throws IOException when connection issue arises
    */
   @GET
   @Path("fills")
   CoinbaseProFill[] getFills(
       @HeaderParam("CB-ACCESS-KEY") String apiKey,
       @HeaderParam("CB-ACCESS-SIGN") ParamsDigest signer,
-      @HeaderParam("CB-ACCESS-TIMESTAMP") SynchronizedValueFactory<Long> nonce,
+      @HeaderParam("CB-ACCESS-TIMESTAMP") long timestamp,
       @HeaderParam("CB-ACCESS-PASSPHRASE") String passphrase,
       @QueryParam("after") Integer tradeIdAfter,
       @QueryParam("before") Integer tradeIdBefore,
@@ -201,7 +204,7 @@ public interface CoinbasePro {
       CoinbaseProSendMoneyRequest sendMoney,
       @HeaderParam("CB-ACCESS-KEY") String apiKey,
       @HeaderParam("CB-ACCESS-SIGN") ParamsDigest signer,
-      @HeaderParam("CB-ACCESS-TIMESTAMP") SynchronizedValueFactory<Long> nonce,
+      @HeaderParam("CB-ACCESS-TIMESTAMP") long timestamp,
       @HeaderParam("CB-ACCESS-PASSPHRASE") String passphrase,
       @PathParam("account_id") String accountId)
       throws CoinbaseProException, IOException;
@@ -209,10 +212,10 @@ public interface CoinbasePro {
   @GET
   @Path("accounts/{account_id}/ledger")
   @Consumes(MediaType.APPLICATION_JSON)
-  List<Map> ledger(
+  List<Map<?, ?>> ledger(
       @HeaderParam("CB-ACCESS-KEY") String apiKey,
       @HeaderParam("CB-ACCESS-SIGN") ParamsDigest signer,
-      @HeaderParam("CB-ACCESS-TIMESTAMP") SynchronizedValueFactory<Long> nonce,
+      @HeaderParam("CB-ACCESS-TIMESTAMP") long timestamp,
       @HeaderParam("CB-ACCESS-PASSPHRASE") String passphrase,
       @PathParam("account_id") String accountId,
       @QueryParam("after") Integer startingOrderId)
@@ -224,7 +227,7 @@ public interface CoinbasePro {
   CoinbaseProTransfers transfers(
       @HeaderParam("CB-ACCESS-KEY") String apiKey,
       @HeaderParam("CB-ACCESS-SIGN") ParamsDigest signer,
-      @HeaderParam("CB-ACCESS-TIMESTAMP") SynchronizedValueFactory<Long> nonce,
+      @HeaderParam("CB-ACCESS-TIMESTAMP") long timestamp,
       @HeaderParam("CB-ACCESS-PASSPHRASE") String passphrase,
       @PathParam("account_id") String accountId,
       @QueryParam("profile_id") String profileId,
@@ -237,7 +240,7 @@ public interface CoinbasePro {
   CoinbaseProTransfers transfers(
       @HeaderParam("CB-ACCESS-KEY") String apiKey,
       @HeaderParam("CB-ACCESS-SIGN") ParamsDigest signer,
-      @HeaderParam("CB-ACCESS-TIMESTAMP") SynchronizedValueFactory<Long> nonce,
+      @HeaderParam("CB-ACCESS-TIMESTAMP") long timestamp,
       @HeaderParam("CB-ACCESS-PASSPHRASE") String passphrase,
       @QueryParam("type") String type,
       @QueryParam("profile_id") String profileId,
@@ -248,10 +251,10 @@ public interface CoinbasePro {
   @POST
   @Path("reports")
   @Consumes(MediaType.APPLICATION_JSON)
-  Map createReport(
+  Map<?, ?> createReport(
       @HeaderParam("CB-ACCESS-KEY") String apiKey,
       @HeaderParam("CB-ACCESS-SIGN") ParamsDigest signer,
-      @HeaderParam("CB-ACCESS-TIMESTAMP") SynchronizedValueFactory<Long> nonce,
+      @HeaderParam("CB-ACCESS-TIMESTAMP") long timestamp,
       @HeaderParam("CB-ACCESS-PASSPHRASE") String passphrase,
       CoinbaseProReportRequest request)
       throws CoinbaseProException, IOException;
@@ -259,10 +262,10 @@ public interface CoinbasePro {
   @GET
   @Path("reports/{report_id}")
   @Consumes(MediaType.APPLICATION_JSON)
-  Map getReport(
+  Map<?, ?> getReport(
       @HeaderParam("CB-ACCESS-KEY") String apiKey,
       @HeaderParam("CB-ACCESS-SIGN") ParamsDigest signer,
-      @HeaderParam("CB-ACCESS-TIMESTAMP") SynchronizedValueFactory<Long> nonce,
+      @HeaderParam("CB-ACCESS-TIMESTAMP") long timestamp,
       @HeaderParam("CB-ACCESS-PASSPHRASE") String passphrase,
       @PathParam("report_id") String reportId)
       throws CoinbaseProException, IOException;
@@ -274,7 +277,7 @@ public interface CoinbasePro {
   CoinbaseProWithdrawCryptoResponse withdrawCrypto(
       @HeaderParam("CB-ACCESS-KEY") String apiKey,
       @HeaderParam("CB-ACCESS-SIGN") ParamsDigest signer,
-      @HeaderParam("CB-ACCESS-TIMESTAMP") SynchronizedValueFactory<Long> nonce,
+      @HeaderParam("CB-ACCESS-TIMESTAMP") long timestamp,
       @HeaderParam("CB-ACCESS-PASSPHRASE") String passphrase,
       CoinbaseProWithdrawFundsRequest request)
       throws HttpStatusIOException;
@@ -284,7 +287,7 @@ public interface CoinbasePro {
   CoinbaseProAccount[] getCoinbaseProAccounts(
       @HeaderParam("CB-ACCESS-KEY") String apiKey,
       @HeaderParam("CB-ACCESS-SIGN") ParamsDigest signer,
-      @HeaderParam("CB-ACCESS-TIMESTAMP") SynchronizedValueFactory<Long> nonce,
+      @HeaderParam("CB-ACCESS-TIMESTAMP") long timestamp,
       @HeaderParam("CB-ACCESS-PASSPHRASE") String passphrase)
       throws HttpStatusIOException;
 
@@ -293,7 +296,7 @@ public interface CoinbasePro {
   CoinbaseProAccountAddress getCoinbaseProAccountAddress(
       @HeaderParam("CB-ACCESS-KEY") String apiKey,
       @HeaderParam("CB-ACCESS-SIGN") ParamsDigest signer,
-      @HeaderParam("CB-ACCESS-TIMESTAMP") SynchronizedValueFactory<Long> nonce,
+      @HeaderParam("CB-ACCESS-TIMESTAMP") long timestamp,
       @HeaderParam("CB-ACCESS-PASSPHRASE") String passphrase,
       @PathParam("account_id") String accountId);
 

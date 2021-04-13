@@ -263,10 +263,24 @@ public final class BitstampAdapters {
       List<BitstampUserTransaction> userTransactions) {
     List<FundingRecord> fundingRecords = new ArrayList<>();
     for (BitstampUserTransaction trans : userTransactions) {
-      if (trans.isDeposit() || trans.isWithdrawal()) {
-        FundingRecord.Type type =
-            trans.isDeposit() ? FundingRecord.Type.DEPOSIT : FundingRecord.Type.WITHDRAWAL;
+      if (trans.isDeposit() || trans.isWithdrawal() || trans.isSubAccountTransfer()) {
+
         Map.Entry<String, BigDecimal> amount = BitstampAdapters.findNonzeroAmount(trans);
+
+        FundingRecord.Type type = FundingRecord.Type.DEPOSIT;
+
+        if (trans.isWithdrawal()) {
+          type = FundingRecord.Type.WITHDRAWAL;
+        } else {
+          if (trans.isSubAccountTransfer()) {
+            if (amount.getValue().compareTo(BigDecimal.ZERO) > 0) {
+              type = FundingRecord.Type.INTERNAL_DEPOSIT;
+            } else {
+              type = FundingRecord.Type.INTERNAL_WITHDRAWAL;
+            }
+          }
+        }
+
         FundingRecord record =
             new FundingRecord(
                 null,
@@ -286,60 +300,27 @@ public final class BitstampAdapters {
     return fundingRecords;
   }
 
-  private static CurrencyPair adaptCurrencyPair(BitstampOrderTransaction transaction) {
+  private static CurrencyPair adaptCurrencyPair(
+      BitstampOrderTransaction transaction, List<CurrencyPair> exchangeSymbols) {
 
-    // USD section
-    if (transaction.getBtc() != null && transaction.getUsd() != null) return CurrencyPair.BTC_USD;
+    String[] keys = transaction.getAmounts().keySet().toArray(new String[0]);
+    if (keys.length != 2) {
+      throw new IllegalArgumentException(
+          "Amount size is not 2. Unable to calculate currency pair.");
+    }
 
-    if (transaction.getLtc() != null && transaction.getUsd() != null) return CurrencyPair.LTC_USD;
-
-    if (transaction.getEth() != null && transaction.getUsd() != null) return CurrencyPair.ETH_USD;
-
-    if (transaction.getXrp() != null && transaction.getUsd() != null) return CurrencyPair.XRP_USD;
-
-    if (transaction.getBch() != null && transaction.getUsd() != null) return CurrencyPair.BCH_USD;
-
-    // EUR section
-    if (transaction.getBtc() != null && transaction.getEur() != null) return CurrencyPair.BTC_EUR;
-
-    if (transaction.getLtc() != null && transaction.getEur() != null) return CurrencyPair.LTC_EUR;
-
-    if (transaction.getEth() != null && transaction.getEur() != null) return CurrencyPair.ETH_EUR;
-
-    if (transaction.getXrp() != null && transaction.getEur() != null) return CurrencyPair.XRP_EUR;
-
-    if (transaction.getBch() != null && transaction.getEur() != null) return CurrencyPair.BCH_EUR;
-
-    // BTC section
-    if (transaction.getLtc() != null && transaction.getBtc() != null) return CurrencyPair.LTC_BTC;
-
-    if (transaction.getEth() != null && transaction.getBtc() != null) return CurrencyPair.ETH_BTC;
-
-    if (transaction.getXrp() != null && transaction.getBtc() != null) return CurrencyPair.XRP_BTC;
-
-    if (transaction.getBch() != null && transaction.getBtc() != null) return CurrencyPair.BCH_BTC;
-
-    if (transaction.getBch() != null && transaction.getBtc() != null) return CurrencyPair.BCH_BTC;
-
-    throw new NotYetImplementedForExchangeException();
+    CurrencyPair currencyPair = new CurrencyPair(keys[0], keys[1]);
+    if (exchangeSymbols.contains(currencyPair)) {
+      return currencyPair;
+    } else {
+      return new CurrencyPair(keys[1], keys[0]);
+    }
   }
 
   private static BigDecimal getBaseCurrencyAmountFromBitstampTransaction(
-      BitstampOrderTransaction bitstampTransaction) {
+      BitstampOrderTransaction bitstampTransaction, CurrencyPair currencyPair) {
 
-    CurrencyPair currencyPair = adaptCurrencyPair(bitstampTransaction);
-
-    if (currencyPair.base.equals(Currency.LTC)) return bitstampTransaction.getLtc();
-
-    if (currencyPair.base.equals(Currency.BTC)) return bitstampTransaction.getBtc();
-
-    if (currencyPair.base.equals(Currency.BCH)) return bitstampTransaction.getBch();
-
-    if (currencyPair.base.equals(Currency.ETH)) return bitstampTransaction.getEth();
-
-    if (currencyPair.base.equals(Currency.XRP)) return bitstampTransaction.getXrp();
-
-    throw new NotYetImplementedForExchangeException();
+    return bitstampTransaction.getAmount(currencyPair.base.getCurrencyCode().toLowerCase());
   }
 
   public static Order.OrderStatus adaptOrderStatus(BitstampOrderStatus bitstampOrderStatus) {
@@ -358,17 +339,20 @@ public final class BitstampAdapters {
    * BitstampGenericOrder as a status
    *
    * @param bitstampOrderStatusResponse
+   * @param exchangeSymbols
    * @return
    */
   public static BitstampGenericOrder adaptOrder(
-      String orderId, BitstampOrderStatusResponse bitstampOrderStatusResponse) {
+      String orderId,
+      BitstampOrderStatusResponse bitstampOrderStatusResponse,
+      List<CurrencyPair> exchangeSymbols) {
 
     BitstampOrderTransaction[] bitstampTransactions = bitstampOrderStatusResponse.getTransactions();
 
     // Use only the first transaction, because we assume that for a single order id all transactions
     // will
     // be of the same currency pair
-    CurrencyPair currencyPair = adaptCurrencyPair(bitstampTransactions[0]);
+    CurrencyPair currencyPair = adaptCurrencyPair(bitstampTransactions[0], exchangeSymbols);
     Date date = bitstampTransactions[0].getDatetime();
 
     BigDecimal averagePrice =
@@ -380,7 +364,7 @@ public final class BitstampAdapters {
 
     BigDecimal cumulativeAmount =
         Arrays.stream(bitstampTransactions)
-            .map(t -> getBaseCurrencyAmountFromBitstampTransaction(t))
+            .map(t -> getBaseCurrencyAmountFromBitstampTransaction(t, currencyPair))
             .reduce((x, y) -> x.add(y))
             .get();
 
