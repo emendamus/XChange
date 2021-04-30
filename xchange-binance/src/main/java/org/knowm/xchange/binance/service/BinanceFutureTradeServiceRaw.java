@@ -21,7 +21,7 @@ public class BinanceFutureTradeServiceRaw extends BinanceFutureBaseService {
     super(exchange, binance, resilienceRegistries);
   }
   
-  public List<BinanceFuturePosition> getOpenPositions()
+  public List<BinanceFuturePosition> getOpenPositionsBinance()
       throws IOException, BinanceException {
     return decorateApiCall(
             () ->
